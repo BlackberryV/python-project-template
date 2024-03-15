@@ -23,28 +23,33 @@ def connect_mqtt(broker, port):
     client.loop_start()
     return client
 
-
 def publish(client, topic, datasource, delay):
-    datasource.startReading()
-    while True:
-        time.sleep(delay)
-        data = datasource.read()
-        msg = AggregatedDataSchema().dumps(data)
-        result = client.publish(topic, msg)
-        # result: [0, 1]
-        status = result[0]
+    accelometer_opened, gps_opened, parking_opened = datasource.startReading()
+    data_read = datasource.read(accelometer_opened, gps_opened, parking_opened)
+    datasource.stopReading(accelometer_opened, gps_opened, parking_opened)
+
+    schema = AggregatedDataSchema()
+
+    for data in data_read:
+        time.sleep(delay) 
+        message = schema.dumps(data)
+        status, _ = client.publish(topic, message)
+
         if status == 0:
-            pass
-            # print(f"Send `{msg}` to topic `{topic}`")
+            print(f"Send `{message}` to topic `{topic}`")
         else:
             print(f"Failed to send message to topic {topic}")
+
+    time.sleep(delay)
 
 
 def run():
     # Prepare mqtt client
     client = connect_mqtt(config.MQTT_BROKER_HOST, config.MQTT_BROKER_PORT)
     # Prepare datasource
-    datasource = FileDatasource("data/data.csv", "data/gps_data.csv")
+    datasource = FileDatasource(
+        "data/accelerometer.csv", "data/gps.csv", "data/parking.csv"
+    )
     # Infinity publish data
     publish(client, config.MQTT_TOPIC, datasource, config.DELAY)
 
