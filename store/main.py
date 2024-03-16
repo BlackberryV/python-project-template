@@ -126,9 +126,24 @@ async def send_data_to_subscribers(user_id: int, data):
 
 @app.post("/processed_agent_data/")
 async def create_processed_agent_data(data: List[ProcessedAgentData]):
-    # Insert data to database
-    # Send data to subscribers
-    pass
+    db = SessionLocal()
+    for item in data:
+        db.execute(
+            processed_agent_data.insert().values(
+                road_state=item.road_state,
+                user_id=item.agent_data.user_id,
+                x=item.agent_data.accelerometer.x,
+                y=item.agent_data.accelerometer.y,
+                z=item.agent_data.accelerometer.z,
+                latitude=item.agent_data.gps.latitude,
+                longitude=item.agent_data.gps.longitude,
+                timestamp=item.agent_data.timestamp
+            )
+        )
+        await send_data_to_subscribers(item.agent_data.user_id, item.dict())
+
+    db.commit()
+    db.close()
 
 
 @app.get(
@@ -136,14 +151,18 @@ async def create_processed_agent_data(data: List[ProcessedAgentData]):
     response_model=ProcessedAgentDataInDB,
 )
 def read_processed_agent_data(processed_agent_data_id: int):
-    # Get data by id
-    pass
+    db = SessionLocal()
+    response = db.execute(processed_agent_data.select().where(processed_agent_data.c.id == processed_agent_data_id)).fetchone()
+    if response is None:
+        raise HTTPException(status_code=404, detail="Row is not exist")
+    return response
 
 
 @app.get("/processed_agent_data/", response_model=list[ProcessedAgentDataInDB])
 def list_processed_agent_data():
-    # Get list of data
-    pass
+    db = SessionLocal()
+    return db.query(processed_agent_data).all()
+
 
 
 @app.put(
@@ -151,8 +170,25 @@ def list_processed_agent_data():
     response_model=ProcessedAgentDataInDB,
 )
 def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAgentData):
-    # Update data
-    pass
+    db = SessionLocal()
+    check_record = db.execute(processed_agent_data.select().where(processed_agent_data.c.id == processed_agent_data_id)).fetchone()
+    if check_record is None:
+        raise HTTPException(status_code=404, detail="No record found")
+
+    db.execute(processed_agent_data.update().where(processed_agent_data.c.id == processed_agent_data_id).values(
+        road_state = data.road_state,
+        user_id = data.agent_data.user_id,
+        x = data.agent_data.accelerometer.x,
+        y = data.agent_data.accelerometer.y,
+        z = data.agent_data.accelerometer.z,
+        latitude = data.agent_data.gps.latitude,
+        longitude = data.agent_data.gps.longitude,
+        timestamp = data.agent_data.timestamp,
+    ))
+    db.commit()
+    new_data = db.execute(processed_agent_data.select().where(processed_agent_data.c.id == processed_agent_data_id)).fetchone()
+    db.close()
+    return new_data
 
 
 @app.delete(
@@ -160,8 +196,15 @@ def update_processed_agent_data(processed_agent_data_id: int, data: ProcessedAge
     response_model=ProcessedAgentDataInDB,
 )
 def delete_processed_agent_data(processed_agent_data_id: int):
-    # Delete by id
-    pass
+    db = SessionLocal()
+    response = db.execute(processed_agent_data.select().where(processed_agent_data.c.id == processed_agent_data_id)).fetchone()
+    if response is None:
+        raise HTTPException(status_code=404, detail="Row is not exist")
+    db.execute(processed_agent_data.delete().where(processed_agent_data.c.id == processed_agent_data_id))
+    db.commit()
+    db.close()
+
+    return response
 
 
 if __name__ == "__main__":

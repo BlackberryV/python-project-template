@@ -14,11 +14,6 @@ class StoreApiAdapter(StoreGateway):
         self.api_base_url = api_base_url
 
     def save_data(self, processed_agent_data_batch: List[ProcessedAgentData]):
-        """
-        Save the processed road data to the Store API.
-        Parameters:
-            processed_agent_data_batch (dict): Processed road data to be saved.
-        Returns:
-            bool: True if the data is successfully saved, False otherwise.
-        """
-        # Implement it
+        converted_data = [json.loads(data.json()) for data in processed_agent_data_batch]
+        response = requests.post(f"{self.api_base_url}/processed_agent_data/", json=converted_data)
+        return response.status_code == 200
