@@ -27,7 +27,7 @@ class FileDatasource:
         for i in range(longest_array_len):
             accelerometer = accelerometer_data[i] if i < len(accelerometer_data) else Accelerometer(1.0,1.0,1.0)
             gps = gps_data[i] if i < len(gps_data) else Gps(1.0, 1.0)
-            parking = parking_data[i] if i < len(parking_data) else Parking(0, Gps(1.0, 1.0))
+            parking = parking_data[i] if i < len(parking_data) else Parking(float(1), Gps(1.0, 1.0))
 
             correct_items_array.append(AggregatedData(accelerometer, gps, parking, datetime.now(), config.USER_ID))
 
